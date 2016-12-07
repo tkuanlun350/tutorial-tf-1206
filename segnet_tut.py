@@ -32,8 +32,8 @@ NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
 LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
 
 INITIAL_LEARNING_RATE = 0.1      # Initial learning rate.
-EVAL_BATCH_SIZE = 5
-BATCH_SIZE = 5
+EVAL_BATCH_SIZE = 1
+BATCH_SIZE = 1
 READ_DATA_SIZE = 100
 # for CamVid
 IMAGE_HEIGHT = 360
@@ -489,7 +489,7 @@ def eval_batches(data, sess, eval_prediction=None):
     return predictions
 
 def test():
-  checkpoint_dir = "/tmp4/first350/TensorFlow/Logs"
+  checkpoint_dir = "/tmp3/first350/TensorFlow/Logs"
   # testing should set BATCH_SIZE = 1
   batch_size = 1
 
@@ -505,7 +505,7 @@ def test():
 
   loss, logits = inference(test_data_node, test_labels_node, phase_train)
 
-  # pred = tf.argmax(logits, dimension=3)
+  pred = tf.argmax(logits, dimension=3)
 
   # get moving avg
   variable_averages = tf.train.ExponentialMovingAverage(
@@ -516,19 +516,23 @@ def test():
 
   with tf.Session() as sess:
     # Load checkpoint
-    saver.restore(sess, "/tmp4/first350/TensorFlow/Logs/model.ckpt-" )
+    saver.restore(sess, "/tmp3/first350/TensorFlow/Logs/model.ckpt-8000" )
     images, labels = get_all_test_data(image_filenames, label_filenames)
     threads = tf.train.start_queue_runners(sess=sess)
     hist = np.zeros((NUM_CLASSES, NUM_CLASSES))
-    for image_batch, label_batch  in zip(images, labels):
+    for image_batch, label_batch  in zip(images[0:1], labels[0:1]):
       print(image_batch.shape, label_batch.shape)
       feed_dict = {
         test_data_node: image_batch,
         test_labels_node: label_batch,
         phase_train: False
       }
-      dense_prediction = sess.run(logits, feed_dict=feed_dict)
+      dense_prediction,_output = sess.run([logits, pred], feed_dict=feed_dict)
       print(dense_prediction.shape)
+      im = Image.fromarray(image_batch.reshape((360,480,3)).astype(np.uint8))
+      im.save("sample.png")
+      Utils.writeImage(_output.reshape((360,480)), "./testImg.png")
+      Utils.writeImage(label_batch.reshape((360,480)), "./testLabel.png")
       hist += get_hist(dense_prediction, label_batch)
     acc_total = np.diag(hist).sum() / hist.sum()
     iu = np.diag(hist) / (hist.sum(1) + hist.sum(0) - np.diag(hist))
@@ -538,8 +542,8 @@ def test():
 
 
 if __name__ == "__main__":
-  #test()
-  #exit()
+  test()
+  exit()
   max_steps = 20000
   batch_size = BATCH_SIZE
   train_dir = "/tmp3/first350/TensorFlow/Logs"
